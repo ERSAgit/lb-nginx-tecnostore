@@ -179,7 +179,7 @@ Hay dos formas de ejecutar el proyecto. Se recomienda la **opción A**, que func
 **Paso 1. Descargar el proyecto.** En una terminal del equipo (PowerShell en Windows):
 
 ```bash
-git clone <URL-del-repositorio> lb-nginx-tecnostore
+git clone [<URL-del-repositorio>](https://github.com/ERSAgit/lb-nginx-tecnostore.git) lb-nginx-tecnostore
 cd lb-nginx-tecnostore/vagrant
 ```
 
