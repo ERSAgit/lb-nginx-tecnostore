@@ -14,7 +14,7 @@ Antes de empezar, leer el `README.md` (sobre todo las secciones 2, 8 y 9).
 ## 1. Levantar el entorno
 
 ```bash
-git clone <URL-del-repositorio> lb-nginx-tecnostore
+git clone https://github.com/ERSAgit/lb-nginx-tecnostore.git lb-nginx-tecnostore
 cd lb-nginx-tecnostore/vagrant
 vagrant up          # crea la VM e instala Docker (unos minutos la primera vez)
 vagrant ssh
