@@ -6,6 +6,8 @@ NGINX funciona como **proxy inverso y balanceador de carga** delante de tres ré
 
 **Integrantes:** _(completar con nombre y código)_
 
+> **Para ejecutarlo rápido:** instalar VirtualBox y Vagrant, y seguir la [sección 5](#5-despliegue-paso-a-paso). En resumen: `cd vagrant`, `vagrant up`, `vagrant ssh`, `cd ~/lb-nginx-tecnostore`, `docker compose -f docker-compose.yml up -d --build`, y abrir http://192.168.100.10:8080
+
 ---
 
 ## 1. Arquitectura
@@ -157,37 +159,88 @@ Para borrar los datos y volver a crear la base desde cero: `docker compose down 
 
 ## 4. Requisitos
 
-- Linux con **Docker Engine** y **Docker Compose v2**. Se usó Ubuntu 22.04 en Vagrant; `vagrant/Vagrantfile` crea la VM con Docker instalado (4 GB de RAM, 2 CPU).
-- `make` (opcional): `sudo apt install -y make`
-- `python3` y `curl` donde se ejecutan los scripts (vienen en Ubuntu).
-- Unos 3 GB de disco para las imágenes (MySQL y Artillery son las más pesadas).
+Hay dos formas de ejecutar el proyecto. Se recomienda la **opción A**, que funciona igual en Windows, macOS o Linux y no requiere instalar Docker en el equipo.
+
+| | Opción A: con Vagrant (recomendada) | Opción B: Docker directo |
+|---|---|---|
+| Para quién | Cualquier PC (así se desarrolló, en Windows) | Un Linux que ya tenga Docker |
+| Programas | [VirtualBox](https://www.virtualbox.org/), [Vagrant](https://developer.hashicorp.com/vagrant/install) y Git | Docker Engine, Docker Compose v2, `python3`, `curl` |
+| Memoria | 8 GB de RAM como mínimo (la VM usa 4 GB); 16 GB para las pruebas de 1000 usuarios | 4 GB libres |
+| Disco | Unos 15 GB libres | Unos 3 GB libres |
+
+`vagrant/Vagrantfile` crea una VM Ubuntu 22.04 (IP `192.168.100.10`, 4 GB de RAM, 2 CPU) con Docker, Compose y `make` ya instalados, y comparte con ella la carpeta del proyecto.
 
 ---
 
 ## 5. Despliegue paso a paso
 
+### Opción A: con Vagrant (recomendada)
+
+**Paso 1. Descargar el proyecto.** En una terminal del equipo (PowerShell en Windows):
+
 ```bash
 git clone <URL-del-repositorio> lb-nginx-tecnostore
-cd lb-nginx-tecnostore
-cat .env                                              # revisar parámetros
-
-docker compose -f docker-compose.yml up -d --build    # o: make up
-docker compose -f docker-compose.yml ps               # db, backend1..3 y nginx deben salir "healthy"
+cd lb-nginx-tecnostore/vagrant
 ```
 
-La primera vez MySQL tarda entre 30 y 60 segundos en cargar `init.sql`. Los backends y NGINX esperan solos.
+**Paso 2. Crear la VM y entrar a ella.**
+
+```bash
+vagrant up      # la primera vez tarda varios minutos: descarga Ubuntu e instala Docker
+vagrant ssh     # abre una terminal dentro de la VM
+```
+
+**Paso 3. Dentro de la VM, levantar los contenedores.**
+
+```bash
+cd ~/lb-nginx-tecnostore
+docker compose -f docker-compose.yml up -d --build    # o: make up
+docker compose -f docker-compose.yml ps               # repetir hasta que todos salgan "healthy"
+```
+
+La primera vez se descargan las imágenes (unos minutos) y MySQL tarda entre 30 y 60 segundos en cargar los 500 productos. Los backends y NGINX esperan solos a que la base de datos esté lista. Al final, `ps` debe mostrar `db`, `backend1`, `backend2`, `backend3` y `nginx` como **healthy**, y `nginx-exporter` y `prometheus` como **Up**.
+
+**Paso 4. Abrir en el navegador del equipo** (no hace falta entrar a la VM para esto):
 
 | URL | Qué muestra |
 |---|---|
-| `http://<IP>:8080/` | La tienda. La etiqueta de abajo a la derecha dice qué backend respondió |
-| `http://<IP>:8080/cluster` | Estado del clúster en vivo |
-| `http://<IP>:8080/pedidos` | Pedidos y ventas por backend |
-| `http://<IP>:8080/nginx_status` | Métricas de NGINX (`stub_status`) |
-| `http://<IP>:9091` | Prometheus (por ejemplo `nginx_http_requests_total`) |
+| http://192.168.100.10:8080/ | La tienda. La etiqueta de abajo a la derecha dice qué backend respondió; al recargar cambia |
+| http://192.168.100.10:8080/cluster | Estado del clúster en vivo |
+| http://192.168.100.10:8080/pedidos | Pedidos y ventas por backend (después de hacer una compra) |
+| http://192.168.100.10:8080/nginx_status | Métricas de NGINX (`stub_status`) |
+| http://192.168.100.10:9091 | Prometheus (consultar por ejemplo `nginx_http_requests_total`) |
 
-Con la VM de Vagrant, `<IP>` es `192.168.100.10`.
+**Paso 5. Apagar.**
 
-Apagar: `docker compose down` (los datos se conservan en el volumen `db_data`).
+```bash
+docker compose down     # dentro de la VM: detiene los contenedores (los datos se conservan en el volumen db_data)
+exit                    # sale de la VM
+vagrant halt            # en el equipo: apaga la VM
+```
+
+Para volver a usarlo: `vagrant up`, `vagrant ssh`, `cd ~/lb-nginx-tecnostore` y `docker compose -f docker-compose.yml up -d` (ya no hace falta `--build`). Para borrar la VM por completo: `vagrant destroy`.
+
+**Si el equipo tiene poca RAM:** en `vagrant/Vagrantfile` cambiar `vb.memory = 4096` por `3072` y ejecutar `vagrant reload`. Alcanza para revisar la tienda, pero no para las pruebas de 1000 usuarios.
+
+### Opción B: en un Linux que ya tiene Docker
+
+```bash
+git clone <URL-del-repositorio> lb-nginx-tecnostore
+cd lb-nginx-tecnostore
+docker compose -f docker-compose.yml up -d --build
+docker compose -f docker-compose.yml ps
+```
+
+Las URL son las mismas de la tabla anterior, cambiando `192.168.100.10` por `localhost` (o por la IP de ese equipo). Apagar con `docker compose down`.
+
+### Qué revisar para comprobar que funciona
+
+1. Abrir la tienda y recargar varias veces: la etiqueta "Atendido por" cambia entre backend1, backend2 y backend3.
+2. Buscar un producto, agregarlo al carrito y comprar. El comprobante dice qué backend procesó la compra, y el pedido aparece en `/pedidos`.
+3. Abrir `/cluster`: las tres barras crecen de forma pareja con round-robin.
+4. Cambiar de algoritmo (sección 6) y repetir: con `ip_hash` todas las páginas las atiende el mismo backend.
+
+Todos los comandos de las secciones 6, 8 y 10 se ejecutan **dentro de la VM**, en la carpeta `~/lb-nginx-tecnostore`.
 
 ---
 
