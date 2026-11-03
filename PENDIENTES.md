@@ -72,7 +72,30 @@ Durante la prueba **b)**, para **cada algoritmo**:
 
 Durante la prueba **c)**: captura de `/cluster` con **backend2 caído** y otra cuando vuelve.
 
-Opcional: en Prometheus, graficar `rate(nginx_http_requests_total[30s])` durante la prueba b).
+### Gráficas de Prometheus (obligatorias)
+
+Prometheus guarda las métricas de NGINX cada 5 segundos, así que las gráficas se pueden hacer **al terminar** la prueba **b)**: la de los 3 algoritmos queda en una sola gráfica, porque corren uno detrás de otro. Hacerlas **antes de apagar** los contenedores, porque al hacer `docker compose down` se pierden.
+
+**Antes de empezar las pruebas**, comprobar que Prometheus está recibiendo datos:
+
+1. En el navegador del PC abrir `http://192.168.100.10:9091`.
+2. Menú **Status → Target health** (en versiones viejas, **Status → Targets**). El target `nginx` debe estar en **UP**. Si sale DOWN, revisar `docker compose -f docker-compose.yml ps`.
+
+**Cuando termine la prueba b)**:
+
+1. En `http://192.168.100.10:9091` ir a **Query** (en versiones viejas, **Graph**).
+2. Escribir la consulta en la caja de texto, dar clic en **Execute** y luego en la pestaña **Graph**.
+3. Ajustar el rango de tiempo a **15m** (el selector que está encima de la gráfica), para que se vean los 3 algoritmos.
+4. Tomar captura de pantalla y guardarla en `resultados/capturas/` con el nombre que dice la tabla.
+
+| Consulta | Qué muestra | Nombre de la captura |
+|---|---|---|
+| `rate(nginx_http_requests_total[30s])` | Peticiones por segundo que atiende NGINX. Se ven tres "montañas", una por algoritmo | `prometheus_req_por_segundo.png` |
+| `nginx_connections_active` | Conexiones abiertas en cada momento. Debe subir cerca de 1000 en cada algoritmo | `prometheus_conexiones_activas.png` |
+
+**Cuando termine la prueba c)**: repetir las dos consultas con rango de **5m** y guardarlas como `prometheus_resiliencia_req.png` y `prometheus_resiliencia_conexiones.png`. Aquí el total de peticiones casi no debe caer cuando se elimina backend2, porque los otros dos lo cubren.
+
+En el informe, estas gráficas van en la sección de resultados, al lado de la tabla de comparación.
 
 ## 4. Mostrar la recarga en caliente (para el informe y la demo)
 
