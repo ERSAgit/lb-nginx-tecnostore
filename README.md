@@ -179,7 +179,7 @@ Hay dos formas de ejecutar el proyecto. Se recomienda la **opción A**, que func
 **Paso 1. Descargar el proyecto.** En una terminal del equipo (PowerShell en Windows):
 
 ```bash
-git clone [<URL-del-repositorio>](https://github.com/ERSAgit/lb-nginx-tecnostore.git) lb-nginx-tecnostore
+git clone https://github.com/ERSAgit/lb-nginx-tecnostore.git lb-nginx-tecnostore
 cd lb-nginx-tecnostore/vagrant
 ```
 
@@ -225,7 +225,7 @@ Para volver a usarlo: `vagrant up`, `vagrant ssh`, `cd ~/lb-nginx-tecnostore` y 
 ### Opción B: en un Linux que ya tiene Docker
 
 ```bash
-git clone [<URL-del-repositorio>](https://github.com/ERSAgit/lb-nginx-tecnostore.git) lb-nginx-tecnostore
+git clone https://github.com/ERSAgit/lb-nginx-tecnostore.git lb-nginx-tecnostore
 cd lb-nginx-tecnostore
 docker compose -f docker-compose.yml up -d --build
 docker compose -f docker-compose.yml ps
