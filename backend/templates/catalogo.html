@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block titulo %}Catálogo{% endblock %}
+{% block estilos %}
+<style>
+  .layout { display: grid; grid-template-columns: 230px 1fr; gap: 24px; }
+  .categorias a { display: flex; justify-content: space-between; padding: 8px 10px; border-radius: 8px;
+                  color: var(--texto); font-size: .95rem; }
+  .categorias a:hover, .categorias a.activa { background: #eef2ff; color: var(--primario); }
+  .categorias small { color: var(--suave); }
+  .cabecera { display: flex; justify-content: space-between; align-items: end; gap: 12px;
+              margin-bottom: 16px; flex-wrap: wrap; }
+  .cabecera select { padding: 8px 10px; border: 1px solid var(--borde); border-radius: 8px; }
+  .grilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+  .prod { display: flex; flex-direction: column; gap: 8px; color: var(--texto); transition: transform .1s; }
+  .prod:hover { transform: translateY(-2px); border-color: #c7d2fe; }
+  .prod .icono-prod { height: 120px; }
+  .prod .nombre { font-weight: 600; font-size: .95rem; min-height: 2.4em; }
+  .paginacion { display: flex; gap: 6px; justify-content: center; margin-top: 24px; flex-wrap: wrap; }
+  .paginacion a, .paginacion span { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--borde); background: #fff; }
+  .paginacion span { background: var(--primario); color: #fff; border-color: var(--primario); }
+  @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+{% block contenido %}
+<div class="layout">
+  <aside class="tarjeta categorias">
+    <h3 style="margin-top:0">Categorías</h3>
+    <a href="/" class="{{ 'activa' if not cat }}">Todas <small>{{ categorias|sum(attribute='total') }}</small></a>
+    {% for c in categorias %}
+      <a href="/?categoria={{ c.slug }}" class="{{ 'activa' if cat == c.slug }}">{{ c.icono }} {{ c.nombre }} <small>{{ c.total }}</small></a>
+    {% endfor %}
+  </aside>
+
+  <section>
+    <div class="cabecera">
+      <div>
+        <h1>{% if q %}Resultados para "{{ q }}"{% elif cat %}{{ (categorias|selectattr('slug','equalto',cat)|first).nombre }}{% else %}Todos los productos{% endif %}</h1>
+        <span class="suave">{{ total }} productos</span>
+      </div>
+      <form method="get">
+        {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
+        {% if cat %}<input type="hidden" name="categoria" value="{{ cat }}">{% endif %}
+        <select name="orden" onchange="this.form.submit()">
+          <option value="relevancia" {{ 'selected' if orden=='relevancia' }}>Mejor calificados</option>
+          <option value="precio_asc" {{ 'selected' if orden=='precio_asc' }}>Precio: menor a mayor</option>
+          <option value="precio_desc" {{ 'selected' if orden=='precio_desc' }}>Precio: mayor a menor</option>
+          <option value="nombre" {{ 'selected' if orden=='nombre' }}>Nombre</option>
+        </select>
+      </form>
+    </div>
+
+    {% if productos %}
+    <div class="grilla">
+      {% for p in productos %}
+      <a class="tarjeta prod" href="/producto/{{ p.id }}">
+        <div class="icono-prod">{{ p.icono }}</div>
+        <span class="suave" style="font-size:.8rem">{{ p.marca }} · {{ p.categoria }}</span>
+        <span class="nombre">{{ p.nombre }}</span>
+        <span class="estrellas">★ {{ p.calificacion }}</span>
+        <span class="precio">{{ p.precio|pesos }}</span>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+      <div class="tarjeta">No encontramos productos con esos filtros.</div>
+    {% endif %}
+
+    {% if paginas > 1 %}
+    <div class="paginacion">
+      {% for n in range(1, paginas + 1) %}
+        {% if n == pagina %}<span>{{ n }}</span>
+        {% else %}<a href="?{% if q %}q={{ q|urlencode }}&{% endif %}{% if cat %}categoria={{ cat }}&{% endif %}orden={{ orden }}&pagina={{ n }}">{{ n }}</a>{% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

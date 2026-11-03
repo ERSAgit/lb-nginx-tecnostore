@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block titulo %}Pedidos{% endblock %}
+{% block contenido %}
+<h1>Pedidos recientes</h1>
+<p class="suave">Cada pedido queda registrado con el backend que lo procesó.</p>
+
+<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin:18px 0">
+  {% for b in por_backend %}
+  <div class="tarjeta">
+    <span class="chip {{ b.backend }}">{{ b.backend }}</span>
+    <p style="font-size:1.6rem; font-weight:700; margin:10px 0 0">{{ b.pedidos }} pedidos</p>
+    <span class="suave">{{ b.ventas|pesos }} en ventas</span>
+  </div>
+  {% else %}
+  <div class="tarjeta">Todavía no hay pedidos.</div>
+  {% endfor %}
+</div>
+
+{% if pedidos %}
+<div class="tarjeta">
+  <table>
+    <tr><th>Pedido</th><th>Fecha</th><th>Unidades</th><th>Total</th><th>Procesado por</th></tr>
+    {% for p in pedidos %}
+    <tr>
+      <td><a href="/pedido/{{ p.id }}">#{{ p.id }}</a></td>
+      <td>{{ p.creado }}</td>
+      <td>{{ p.unidades }}</td>
+      <td>{{ p.total|pesos }}</td>
+      <td><span class="chip {{ p.backend }}">{{ p.backend }}</span></td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% endblock %}

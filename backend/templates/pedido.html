@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block titulo %}Pedido #{{ pedido.id }}{% endblock %}
+{% block contenido %}
+<div class="tarjeta" style="max-width:720px; margin:0 auto">
+  <h1>✅ ¡Compra realizada!</h1>
+  <p class="suave">Pedido <b>#{{ pedido.id }}</b> · {{ pedido.creado }}</p>
+  <p>Este pedido lo procesó <span class="chip {{ pedido.backend }}">{{ pedido.backend }}</span>.
+     Puede que esta página la esté mostrando otro backend: todos leen la misma base de datos.</p>
+  <table>
+    <tr><th>Producto</th><th>Cantidad</th><th>Precio</th></tr>
+    {% for i in items %}
+    <tr><td>{{ i.icono }} {{ i.nombre }}</td><td>{{ i.cantidad }}</td><td>{{ i.precio_unitario|pesos }}</td></tr>
+    {% endfor %}
+  </table>
+  <p style="font-size:1.3rem; text-align:right">Total: <b>{{ pedido.total|pesos }}</b></p>
+  <a class="btn btn-sec" href="/">Seguir comprando</a>
+  <a class="btn btn-sec" href="/pedidos">Ver pedidos</a>
+</div>
+{% endblock %}

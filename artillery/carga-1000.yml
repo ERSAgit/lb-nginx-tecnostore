@@ -1,0 +1,32 @@
+# Prueba de 1000 usuarios concurrentes durante 60 segundos.
+# Los 1000 usuarios se crean en una rampa de 10 s. Cada uno entra a la
+# tienda, revisa 55 productos (1 s de pausa entre cada uno), agrega uno
+# al carrito y finaliza la compra. Así permanecen activos al mismo tiempo
+# durante unos 60 s, y la carga incluye lecturas y escrituras en MySQL.
+config:
+  target: "http://nginx"
+  phases:
+    - name: "Rampa hasta 1000 usuarios"
+      duration: 10
+      arrivalRate: 10
+      rampTo: 190
+  http:
+    timeout: 10
+
+scenarios:
+  - name: "Comprador que navega la tienda durante 60 s"
+    flow:
+      - get:
+          url: "/"
+      - loop:
+          - get:
+              url: "/producto/{{ $randomNumber(1, 500) }}"
+          - think: 1
+        count: 55
+      - post:
+          url: "/carrito/agregar"
+          form:
+            producto_id: "{{ $randomNumber(1, 500) }}"
+            cantidad: "1"
+      - post:
+          url: "/checkout"

@@ -1,0 +1,33 @@
+# Escenario con ramp-up progresivo:
+# calentamiento -> rampa de subida -> carga sostenida.
+# Cada usuario recorre la tienda como un comprador real.
+config:
+  target: "http://nginx"
+  phases:
+    - name: "Calentamiento"
+      duration: 30
+      arrivalRate: 5
+    - name: "Rampa de subida"
+      duration: 60
+      arrivalRate: 5
+      rampTo: 60
+    - name: "Carga sostenida"
+      duration: 30
+      arrivalRate: 60
+  http:
+    timeout: 10
+
+scenarios:
+  - name: "Comprador que busca, revisa y agrega al carrito"
+    flow:
+      - get:
+          url: "/"
+      - get:
+          url: "/?q=pro&orden=precio_asc"
+      - get:
+          url: "/producto/{{ $randomNumber(1, 500) }}"
+      - post:
+          url: "/carrito/agregar"
+          form:
+            producto_id: "{{ $randomNumber(1, 500) }}"
+            cantidad: "1"

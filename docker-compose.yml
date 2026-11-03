@@ -1,0 +1,154 @@
+# Balanceador de carga web con NGINX + aplicación TecnoStore
+# Servicios: NGINX (balanceador) + 3 backends + MySQL + Artillery + métricas (Prometheus)
+name: lb-nginx
+
+# Variables comunes de los 3 backends
+x-backend-env: &backend-env
+  DB_HOST: db
+  DB_NAME: ${MYSQL_DATABASE}
+  DB_USER: ${MYSQL_USER}
+  DB_PASSWORD: ${MYSQL_PASSWORD}
+  DB_POOL_SIZE: ${DB_POOL_SIZE}
+  CART_STORAGE: ${CART_STORAGE}
+  GUNICORN_THREADS: ${GUNICORN_THREADS}
+  # Nodos del clúster: el panel /cluster los consulta por la red interna
+  CLUSTER_NODES: backend1:8080,backend2:8080,backend3:8080
+
+# Configuración común de los 3 backends
+x-backend: &backend
+  build: ./backend
+  image: lb-nginx-backend:2.0
+  expose:
+    - "8080"                  # solo visible dentro de la red Docker, NO en el host
+  networks:
+    - lb_net
+  depends_on:
+    db: { condition: service_healthy }
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3)"]
+    interval: 10s
+    timeout: 5s
+    retries: 3
+    start_period: 10s
+
+services:
+  nginx:
+    image: nginx:1.28-alpine
+    container_name: lb-nginx
+    # worker_processes se toma de .env
+    command: ["nginx", "-g", "daemon off; worker_processes ${NGINX_WORKERS};"]
+    ports:
+      - "${PUBLIC_PORT}:80"   # único punto de entrada desde el host
+    volumes:
+      # Configuración montada como volumen (no copiada en la imagen)
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # Bloque upstream según la política elegida en .env
+      - ./nginx/upstreams/${BALANCE_POLICY}.conf:/etc/nginx/upstream.conf:ro
+      # Logs del balanceador en el host, para analizarlos
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      backend1: { condition: service_healthy }
+      backend2: { condition: service_healthy }
+      backend3: { condition: service_healthy }
+    networks:
+      - lb_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/lb-health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  backend1:
+    <<: *backend
+    hostname: backend1
+    environment:
+      <<: *backend-env
+      BACKEND_NAME: backend1
+
+  backend2:
+    <<: *backend
+    hostname: backend2
+    environment:
+      <<: *backend-env
+      BACKEND_NAME: backend2
+
+  backend3:
+    <<: *backend
+    hostname: backend3
+    environment:
+      <<: *backend-env
+      BACKEND_NAME: backend3
+
+  # Base de datos compartida por los 3 backends
+  db:
+    image: mysql:8.0
+    container_name: lb-mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max-connections=300
+      - --innodb-buffer-pool-size=128M
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql                         # volumen con nombre: los datos persisten
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro   # esquema y productos (solo la 1.ª vez)
+    expose:
+      - "3306"                # solo la red interna; los backends se conectan como "db"
+    networks:
+      - lb_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  # Pruebas de carga. No arranca con "up": se usa con "docker compose run".
+  artillery:
+    image: artilleryio/artillery:latest
+    profiles: ["test"]
+    working_dir: /scripts
+    environment:
+      ARTILLERY_DISABLE_TELEMETRY: "true"
+    volumes:
+      - ./artillery:/scripts:ro
+      - ./results:/results
+    networks:
+      - lb_net
+
+  # ---- Métricas (opcional pero valorado) ----
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:latest
+    command: ["--nginx.scrape-uri=http://nginx/nginx_status"]
+    depends_on:
+      - nginx
+    networks:
+      - lb_net
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "${PROMETHEUS_PORT}:9090"
+    depends_on:
+      - nginx-exporter
+    networks:
+      - lb_net
+    restart: unless-stopped
+
+networks:
+  lb_net:
+    name: lb_net              # red personalizada con nombre explícito
+    driver: bridge
+
+volumes:
+  db_data:                    # datos de MySQL (sobreviven a "docker compose down")

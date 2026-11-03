@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block titulo %}TecnoStore{% endblock %} · TecnoStore</title>
+<style>
+  :root {
+    --fondo: #f4f6fb; --tarjeta: #ffffff; --texto: #1c2333; --suave: #667085;
+    --borde: #e3e8f0; --primario: #2f54eb; --primario-osc: #1d39c4; --exito: #12b76a;
+    --peligro: #f04438; --encabezado: #101828;
+    --backend1: #2f54eb; --backend2: #12b76a; --backend3: #f79009;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+         background: var(--fondo); color: var(--texto); }
+  a { color: var(--primario); text-decoration: none; }
+  header { background: var(--encabezado); color: #fff; position: sticky; top: 0; z-index: 10; }
+  .barra { max-width: 1200px; margin: 0 auto; padding: 12px 20px; display: flex; gap: 20px;
+           align-items: center; flex-wrap: wrap; }
+  .logo { font-size: 1.4rem; font-weight: 700; color: #fff; white-space: nowrap; }
+  .logo span { color: #7c9cff; }
+  .buscador { flex: 1; display: flex; min-width: 220px; }
+  .buscador input { flex: 1; padding: 10px 14px; border: none; border-radius: 8px 0 0 8px; font-size: .95rem; }
+  .buscador button { padding: 0 18px; border: none; background: var(--primario); color: #fff;
+                     border-radius: 0 8px 8px 0; cursor: pointer; font-size: .95rem; }
+  nav { display: flex; gap: 18px; align-items: center; }
+  nav a { color: #d0d5dd; font-size: .95rem; white-space: nowrap; }
+  nav a:hover { color: #fff; }
+  .carrito-btn { background: #1d2939; padding: 8px 14px; border-radius: 8px; color: #fff !important; }
+  .contador { background: var(--primario); border-radius: 999px; padding: 1px 8px; margin-left: 4px; font-size: .8rem; }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 20px 80px; }
+  h1 { font-size: 1.6rem; margin: 0 0 6px; }
+  .suave { color: var(--suave); }
+  .tarjeta { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 14px; padding: 18px; }
+  .btn { display: inline-block; border: none; border-radius: 8px; padding: 10px 18px; font-size: .95rem;
+         cursor: pointer; background: var(--primario); color: #fff; }
+  .btn:hover { background: var(--primario-osc); }
+  .btn-sec { background: #eef2ff; color: var(--primario); }
+  .btn-sec:hover { background: #e0e7ff; }
+  .btn-peligro { background: transparent; color: var(--peligro); padding: 6px 8px; }
+  .icono-prod { display: flex; align-items: center; justify-content: center; font-size: 3rem;
+                background: linear-gradient(135deg, #eef2ff, #f8fafc); border-radius: 10px; }
+  .precio { font-weight: 700; font-size: 1.1rem; }
+  .estrellas { color: #f79009; font-size: .9rem; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--borde); }
+  th { color: var(--suave); font-weight: 600; font-size: .85rem; text-transform: uppercase; }
+  .chip { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .8rem;
+          font-weight: 600; color: #fff; background: #98a2b3; }
+  .chip.backend1 { background: var(--backend1); } .chip.backend2 { background: var(--backend2); }
+  .chip.backend3 { background: var(--backend3); }
+  .alerta { background: #fef3f2; color: #b42318; border: 1px solid #fecdca; padding: 12px 16px;
+            border-radius: 10px; margin-bottom: 16px; }
+  /* Etiqueta flotante con el backend que atendió la página */
+  .nodo { position: fixed; right: 16px; bottom: 16px; background: #fff; border: 1px solid var(--borde);
+          border-radius: 12px; padding: 8px 14px; font-size: .85rem; box-shadow: 0 4px 16px rgba(16,24,40,.12);
+          display: flex; gap: 8px; align-items: center; }
+  .nodo .punto { width: 10px; height: 10px; border-radius: 50%; background: #98a2b3; }
+  .nodo .punto.backend1 { background: var(--backend1); } .nodo .punto.backend2 { background: var(--backend2); }
+  .nodo .punto.backend3 { background: var(--backend3); }
+  footer { text-align: center; color: var(--suave); font-size: .85rem; padding: 24px; }
+</style>
+{% block estilos %}{% endblock %}
+</head>
+<body>
+<header>
+  <div class="barra">
+    <a class="logo" href="/">Tecno<span>Store</span></a>
+    <form class="buscador" action="/" method="get">
+      <input type="text" name="q" placeholder="Busca portátiles, celulares, audífonos..." value="{{ q or '' }}">
+      <button type="submit">Buscar</button>
+    </form>
+    <nav>
+      <a href="/">Catálogo</a>
+      <a href="/pedidos">Pedidos</a>
+      <a href="/cluster">Estado del clúster</a>
+      <a class="carrito-btn" href="/carrito">🛒 Carrito<span class="contador">{{ unidades_carrito }}</span></a>
+    </nav>
+  </div>
+</header>
+
+<main>
+{% block contenido %}{% endblock %}
+</main>
+
+<footer>TecnoStore · Proyecto de balanceo de carga con NGINX · Servicios Telemáticos, UAO 2026-02</footer>
+
+<div class="nodo" title="Backend que generó esta página">
+  <span class="punto {{ nodo }}"></span>
+  Atendido por <b>{{ nodo }}</b>&nbsp;·&nbsp;{{ politica }}
+</div>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block titulo %}{{ p.nombre }}{% endblock %}
+{% block estilos %}
+<style>
+  .detalle { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .detalle .icono-prod { height: 320px; font-size: 7rem; }
+  .comprar { display: flex; gap: 10px; align-items: center; margin-top: 18px; }
+  .comprar input { width: 70px; padding: 9px; border: 1px solid var(--borde); border-radius: 8px; }
+  .rel { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+  .rel .icono-prod { height: 80px; font-size: 2.2rem; }
+  @media (max-width: 760px) { .detalle { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+{% block contenido %}
+<p class="suave"><a href="/">Catálogo</a> › <a href="/?categoria={{ p.slug }}">{{ p.categoria }}</a> › {{ p.nombre }}</p>
+<div class="detalle">
+  <div class="tarjeta icono-prod">{{ p.icono }}</div>
+  <div>
+    <span class="suave">{{ p.marca }}</span>
+    <h1>{{ p.nombre }}</h1>
+    <span class="estrellas">★ {{ p.calificacion }} / 5</span>
+    <p style="font-size:1.8rem; font-weight:700; margin:16px 0 4px">{{ p.precio|pesos }}</p>
+    <p class="suave">{{ p.stock }} unidades disponibles</p>
+    <p>{{ p.descripcion }}</p>
+    <form class="comprar" action="/carrito/agregar" method="post">
+      <input type="hidden" name="producto_id" value="{{ p.id }}">
+      <input type="number" name="cantidad" value="1" min="1" max="10">
+      <button class="btn" type="submit">Agregar al carrito</button>
+    </form>
+  </div>
+</div>
+
+{% if relacionados %}
+<h2 style="margin-top:36px">También te puede interesar</h2>
+<div class="rel">
+  {% for r in relacionados %}
+  <a class="tarjeta" href="/producto/{{ r.id }}" style="color:inherit; display:flex; flex-direction:column; gap:6px">
+    <div class="icono-prod">{{ r.icono }}</div>
+    <b style="font-size:.9rem">{{ r.nombre }}</b>
+    <span class="precio" style="font-size:1rem">{{ r.precio|pesos }}</span>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

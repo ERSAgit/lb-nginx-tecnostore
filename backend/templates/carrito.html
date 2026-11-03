@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block titulo %}Carrito{% endblock %}
+{% block contenido %}
+<h1>Tu carrito</h1>
+<p class="suave">El carrito se guarda en: <b>{{ 'la base de datos (compartida por los 3 backends)' if modo_carrito == 'db' else 'la memoria de cada backend' }}</b></p>
+
+{% if error == 'sin_stock' %}
+  <div class="alerta">Uno de los productos ya no tiene unidades suficientes. Ajusta tu carrito e inténtalo de nuevo.</div>
+{% endif %}
+
+{% if lineas %}
+<div class="tarjeta">
+  <table>
+    <tr><th>Producto</th><th>Precio</th><th>Cantidad</th><th>Subtotal</th><th></th></tr>
+    {% for l in lineas %}
+    <tr>
+      <td>{{ l.icono }} <a href="/producto/{{ l.id }}">{{ l.nombre }}</a></td>
+      <td>{{ l.precio|pesos }}</td>
+      <td>{{ l.cantidad }}</td>
+      <td><b>{{ l.subtotal|pesos }}</b></td>
+      <td>
+        <form action="/carrito/quitar" method="post" style="margin:0">
+          <input type="hidden" name="producto_id" value="{{ l.id }}">
+          <button class="btn btn-peligro" type="submit">Quitar</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-top:18px; flex-wrap:wrap; gap:12px">
+    <span style="font-size:1.3rem">Total ({{ unidades }} unidades): <b>{{ total|pesos }}</b></span>
+    <form action="/checkout" method="post" style="margin:0">
+      <button class="btn" type="submit">Finalizar compra</button>
+    </form>
+  </div>
+</div>
+{% else %}
+<div class="tarjeta">
+  <p>Tu carrito está vacío.</p>
+  <a class="btn btn-sec" href="/">Ir al catálogo</a>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block titulo %}Estado del clúster{% endblock %}
+{% block estilos %}
+<style>
+  .resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin: 18px 0; }
+  .resumen .valor { font-size: 1.7rem; font-weight: 700; margin-top: 6px; }
+  .nodo-fila { display: grid; grid-template-columns: 130px 1fr 150px 110px; gap: 14px; align-items: center;
+               padding: 14px 0; border-bottom: 1px solid var(--borde); }
+  .nodo-fila:last-child { border-bottom: none; }
+  .barra-fondo { background: #f2f4f7; border-radius: 999px; height: 18px; overflow: hidden; }
+  .barra-relleno { height: 100%; border-radius: 999px; transition: width .6s ease; width: 0; background: #98a2b3; }
+  .barra-relleno.backend1 { background: var(--backend1); } .barra-relleno.backend2 { background: var(--backend2); }
+  .barra-relleno.backend3 { background: var(--backend3); }
+  .estado { font-weight: 600; font-size: .9rem; }
+  .estado.activo { color: var(--exito); } .estado.caido { color: var(--peligro); }
+  .fila-caida { opacity: .55; }
+  @media (max-width: 700px) { .nodo-fila { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+{% block contenido %}
+<div style="display:flex; justify-content:space-between; align-items:end; flex-wrap:wrap; gap:12px">
+  <div>
+    <h1>Estado del clúster</h1>
+    <span class="suave">Peticiones atendidas por cada backend. Se actualiza cada 2 segundos.</span>
+  </div>
+  <button class="btn btn-sec" onclick="reiniciar()">Reiniciar contadores</button>
+</div>
+
+<div class="resumen">
+  <div class="tarjeta"><span class="suave">Algoritmo de balanceo</span><div class="valor" id="politica">–</div></div>
+  <div class="tarjeta"><span class="suave">Peticiones totales</span><div class="valor" id="total">–</div></div>
+  <div class="tarjeta"><span class="suave">Backends activos</span><div class="valor" id="activos">–</div></div>
+  <div class="tarjeta"><span class="suave">Esta consulta la respondió</span><div class="valor" id="atendido">–</div></div>
+</div>
+
+<div class="tarjeta" id="nodos"><span class="suave">Consultando los backends...</span></div>
+
+<p class="suave" style="margin-top:16px; font-size:.9rem">
+  Cómo funciona: el backend que atiende esta consulta les pregunta a los demás por la red interna de Docker
+  (<code>http://backendN:8080/stats</code>) y junta las respuestas. Si un backend no contesta, se marca como caído.
+</p>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const formato = n => n === null ? "–" : n.toLocaleString("es-CO");
+
+  async function actualizar() {
+    try {
+      const r = await fetch("/api/cluster", { cache: "no-store" });
+      const d = await r.json();
+      const activos = d.nodos.filter(n => n.activo).length;
+      document.getElementById("politica").textContent = d.politica;
+      document.getElementById("total").textContent = formato(d.total);
+      document.getElementById("activos").textContent = `${activos} de ${d.nodos.length}`;
+      document.getElementById("atendido").textContent = d.atendido_por;
+
+      const filas = d.nodos.map(n => {
+        const nombre = n.backend;
+        const porc = d.total > 0 && n.peticiones !== null ? (100 * n.peticiones / d.total) : 0;
+        return `
+          <div class="nodo-fila ${n.activo ? "" : "fila-caida"}">
+            <span class="chip ${nombre}">${nombre}</span>
+            <div class="barra-fondo"><div class="barra-relleno ${nombre}" style="width:${porc.toFixed(1)}%"></div></div>
+            <span><b>${formato(n.peticiones)}</b> peticiones · ${porc.toFixed(1)} %</span>
+            <span class="estado ${n.activo ? "activo" : "caido"}">${n.activo ? "● activo" : "● caído"}</span>
+          </div>`;
+      }).join("");
+      document.getElementById("nodos").innerHTML = filas;
+    } catch (e) {
+      document.getElementById("nodos").innerHTML = '<span class="suave">No se pudo consultar el clúster.</span>';
+    }
+  }
+
+  async function reiniciar() {
+    await fetch("/api/cluster/reset", { method: "POST" });
+    actualizar();
+  }
+
+  actualizar();
+  setInterval(actualizar, 2000);
+</script>
+{% endblock %}

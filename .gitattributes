@@ -1,0 +1,3 @@
+# Forzar saltos de línea de Linux (LF): si los .sh se guardan con los de
+# Windows (CRLF), fallan al ejecutarse dentro de la VM o de los contenedores.
+* text=auto eol=lf

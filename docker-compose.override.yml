@@ -1,0 +1,13 @@
+# Entorno de DESARROLLO. Docker Compose lo aplica automáticamente con "docker compose up".
+# Cambia el arranque de NGINX por un script que recarga la configuración en caliente
+# cada vez que se edita nginx/nginx.conf o el archivo de la política activa.
+#
+# Para las pruebas de carga se usa SOLO el archivo base:
+#   docker compose -f docker-compose.yml up -d
+services:
+  nginx:
+    command: ["/bin/sh", "/hot-reload.sh"]
+    environment:
+      NGINX_WORKERS: ${NGINX_WORKERS}
+    volumes:
+      - ./nginx/hot-reload.sh:/hot-reload.sh:ro
