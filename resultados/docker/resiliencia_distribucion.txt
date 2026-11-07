@@ -1,0 +1,12 @@
+Archivo: results/resiliencia_access.log
+Total de peticiones: 4548
+
+== Peticiones por backend ==
+  backend3             1830   40.24%
+  backend1             1828   40.19%
+  backend2              890   19.57%
+
+== Códigos de estado HTTP ==
+  200                  4548  100.00%
+
+== Peticiones que se reintentaron en otro backend: 27 ==
