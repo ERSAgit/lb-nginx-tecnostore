@@ -1,0 +1,11 @@
+Archivo: logs/nginx/access.log
+Total de peticiones: 15036
+
+== Peticiones por backend ==
+  backend3            15036  100.00%
+
+== Códigos de estado HTTP ==
+  200                 14536   96.67%
+  303                   500    3.33%
+
+== Peticiones que se reintentaron en otro backend: 0 ==
