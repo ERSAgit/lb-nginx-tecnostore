@@ -354,17 +354,41 @@ Distribución real de peticiones por backend, códigos de estado, peticiones rei
 
 ---
 
-## 9. Resultados de referencia
+## 9. Resultados obtenidos
 
-Prueba de desarrollo en una máquina de 2 CPU, con los mismos componentes fuera de Docker (MySQL 8.0, 3 backends con Gunicorn, NGINX y Artillery 2). **Los valores cambian según el equipo**; la tabla del informe debe salir de una corrida completa en el entorno Docker.
+Pruebas corridas en Docker Desktop (WSL2) en un PC con AMD Ryzen 7 8700F (8 núcleos, 16 hilos) y 16 GB de RAM, con 16 hilos y 7,5 GB de memoria asignados a Docker. Artillery corrió en la misma máquina. Los archivos completos están en `resultados/docker/` y las capturas en `resultados/capturas/`. **Los valores cambian según el equipo.**
 
-**1000 compradores concurrentes (unas 60 000 peticiones y 1000 pedidos por algoritmo):**
+**Rampa (`rampa.yml`):** 3900 usuarios, 19 500 peticiones, **0 errores**, media 5,6 ms y p99 22,0 ms.
 
-| Algoritmo | Req/s | Media | p99 | Errores | Reparto |
+**Comparación con 250 usuarios concurrentes (`carga-250.yml`, unas 15 000 peticiones por algoritmo):**
+
+| Algoritmo | Req/s | Media | p95 | p99 | Errores | Reparto según el log |
+|---|---|---|---|---|---|---|
+| round_robin | 235 | 4,7 ms | 8,9 ms | 24,8 ms | 0 | 33,3 % para cada backend |
+| least_conn | 235 | 4,0 ms | 7,0 ms | 18,0 ms | 0 | entre 33,2 % y 33,5 % |
+| ip_hash | 230 | 31,1 ms | 120,3 ms | 175,9 ms | 0 | 100 % a backend3 |
+
+**1000 usuarios concurrentes durante 60 s (`carga-1000.yml`, en `resultados/docker/saturacion-1000/`):**
+
+| Algoritmo | Req/s | Media | p99 | Errores | Usuarios que terminaron |
 |---|---|---|---|---|---|
-| round_robin | 511 | 434 ms | 1300 ms | 0 | 33.33 % exacto para cada backend |
-| least_conn | 513 | 438 ms | 1249 ms | 0 | entre 33.2 % y 33.4 % |
-| ip_hash | 519 | 558 ms | 1620 ms | 0 | 100 % a un solo backend |
+| round_robin | 283 | 221,1 ms | 5168 ms | 43,2 % | 712 de 1000 |
+| least_conn | 295 | 342,4 ms | 5168 ms | 57,8 % | 993 de 1000 |
+| ip_hash | 88 | 826,2 ms | 5272 ms | 6,2 % | 437 de 1000 |
+
+Con 1000 usuarios el clúster se satura: 1000 compradores piden cerca de 1000 peticiones por segundo y en ese equipo solo alcanza unas 290. Las respuestas pasan de los 5 s de `proxy_read_timeout`, NGINX lo cuenta como fallo y, con `max_fails=3`, marca los backends como caídos. Como los tres se saturan a la vez, quedan marcados todos y NGINX responde 502 al instante (por eso la mediana es de 3 ms). Es un **fallo en cascada**; el análisis completo está en el informe. Una segunda corrida de 1000 usuarios dio 276 req/s y 56,8 % de errores.
+
+**Resiliencia (90 s a 50 peticiones/s, backend2 eliminado del segundo 30 al 60):** 4500 peticiones, **0 errores**, 27 reintentadas en otro backend.
+
+```
+segundos   backend1  backend2  backend3  errores
+  20-30       169       168       168        0
+  30-40       246         8       249        0     ← se elimina backend2
+  40-50       251         0       254        0
+  50-60       253         0       251        0
+  60-70       235        39       234        0     ← backend2 vuelve
+  70-80       168       169       168        0
+```
 
 **Sesión (compradores que conservaron su carrito, de 20):**
 
@@ -373,26 +397,12 @@ Prueba de desarrollo en una máquina de 2 CPU, con los mismos componentes fuera 
 | memoria del backend | 0/20 | 0/20 | 20/20 |
 | base de datos | 20/20 | 20/20 | 20/20 |
 
-**Resiliencia (45 s a 50 peticiones/s, backend2 eliminado del segundo 12 al 27):** 2250 peticiones, **0 errores**, 8 peticiones reintentadas en otro backend. Mientras `backend2` estuvo caído, backend1 y backend3 se repartieron todo el tráfico, y al volver recibió otra vez un tercio.
+Qué muestra cada algoritmo:
 
-```
-segundos   backend1  backend2  backend3  errores
-   5-10        84        83        83        0
-  10-15       122         3       126        0     ← se elimina backend2
-  15-20       125         0       125        0
-  25-30       125         0       125        0
-  30-35       101        49       100        0     ← backend2 vuelve
-  35-40        83        84        83        0
-```
-
-Qué se espera de cada algoritmo:
-
-- **round_robin:** reparto exacto en orden. Es el más simple y aquí funciona bien porque las tres réplicas son iguales.
-- **least_conn:** reparto parecido, pero envía cada petición al backend con menos peticiones en curso. Su ventaja aparece cuando unas peticiones tardan más que otras (por ejemplo una compra frente a ver un producto): baja un poco el p99.
-- **ip_hash:** **todo el tráfico de Artillery va a un solo backend**, porque todas las peticiones salen de la misma IP (la del contenedor de Artillery). Es el comportamiento correcto de la afinidad de sesión, y muestra su costo: con pocos clientes distintos no reparte la carga, y la latencia sube porque un backend hace el trabajo de tres. A cambio es el único que conserva un carrito guardado en memoria.
+- **round_robin:** reparto exacto en orden. Funciona bien porque las tres réplicas son iguales.
+- **least_conn:** reparto parecido, con un p99 un poco menor, porque evita mandar trabajo al backend que está ocupado.
+- **ip_hash:** todo el tráfico de Artillery va a un solo backend, porque todas las peticiones salen de la misma IP (la del contenedor de Artillery). Por eso su latencia es mayor. A cambio, es el único que conserva un carrito guardado en memoria.
 - **Resiliencia:** el servicio sigue respondiendo con un backend caído; las peticiones que iban a él se reintentan en otro.
-
----
 
 ## 10. Entorno de desarrollo con recarga en caliente
 
