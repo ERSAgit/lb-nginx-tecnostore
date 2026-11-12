@@ -1,4 +1,4 @@
 Active connections: 3 
 server accepts handled requests
- 264 264 15061 
+ 1050 1050 60100 
 Reading: 0 Writing: 1 Waiting: 2 
