@@ -1,10 +1,12 @@
 # Balanceador de carga web con NGINX: TecnoStore
 
+Emmanuel Roman Solarte Aguirre (2230570), Juan José Baloco Sánchez (2230722), José Alejandro Castillo Arce (2230181), Rafael Plazas Ramírez (2230183), Carlos Andrés Chalaca Patiño (2226213), Daniel Santiago Truque Martínez (1108561484)
+
 Proyecto final de **Servicios Telemáticos** (Universidad Autónoma de Occidente, 2026-02).
 
 NGINX funciona como **proxy inverso y balanceador de carga** delante de tres réplicas de una tienda en línea, **TecnoStore**, que consultan una base de datos **MySQL**. Todo se despliega con **Docker Compose**. El proyecto compara los algoritmos **round-robin, least_conn e ip_hash** con pruebas de carga en **Artillery**, mide en tiempo real con `stub_status` y **Prometheus**, y prueba qué pasa cuando un backend falla.
 
-**Integrantes:** _(completar con nombre y código)_
+**Integrantes:** Emmanuel Roman Solarte Aguirre (2230570), Juan José Baloco Sánchez (2230722), José Alejandro Castillo Arce (2230181), Rafael Plazas Ramírez (2230183), Carlos Andrés Chalaca Patiño (2226213), Daniel Santiago Truque Martínez (1108561484)
 
 > **Para ejecutarlo rápido:** instalar VirtualBox y Vagrant, y seguir la [sección 5](#5-despliegue-paso-a-paso). En resumen: `cd vagrant`, `vagrant up`, `vagrant ssh`, `cd ~/lb-nginx-tecnostore`, `docker compose -f docker-compose.yml up -d --build`, y abrir http://192.168.100.10:8080
 
