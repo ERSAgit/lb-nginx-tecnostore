@@ -356,38 +356,30 @@ Distribución real de peticiones por backend, códigos de estado, peticiones rei
 
 ## 9. Resultados obtenidos
 
-Pruebas corridas en Docker Desktop (WSL2) en un PC con AMD Ryzen 7 8700F (8 núcleos, 16 hilos) y 16 GB de RAM, con 16 hilos y 7,5 GB de memoria asignados a Docker. Artillery corrió en la misma máquina. Los archivos completos están en `resultados/docker/` y las capturas en `resultados/capturas/`. **Los valores cambian según el equipo.**
+Pruebas corridas en la VM de Vagrant (Ubuntu 22.04 con Docker Engine, **8 GB de RAM y 4 CPU**: en el `Vagrantfile` se cambió `vb.memory = 8192` y `vb.cpus = 4`) sobre un PC con AMD Ryzen 5 9600X y 32 GB de RAM. Artillery corrió dentro de la misma VM. Los archivos están en `resultados/docker/` y las capturas en `resultados/capturas/`. **Los valores cambian según el equipo.**
 
-**Rampa (`rampa.yml`):** 3900 usuarios, 19 500 peticiones, **0 errores**, media 5,6 ms y p99 22,0 ms.
+**Rampa (`rampa.yml`):** 3900 usuarios, 19 500 peticiones, **0 errores**, media 4,2 ms y p99 12,1 ms.
 
-**Comparación con 250 usuarios concurrentes (`carga-250.yml`, unas 15 000 peticiones por algoritmo):**
+**1000 usuarios concurrentes durante 60 s (`carga-1000.yml`, 60 000 peticiones por algoritmo):**
 
 | Algoritmo | Req/s | Media | p95 | p99 | Errores | Reparto según el log |
 |---|---|---|---|---|---|---|
-| round_robin | 235 | 4,7 ms | 8,9 ms | 24,8 ms | 0 | 33,3 % para cada backend |
-| least_conn | 235 | 4,0 ms | 7,0 ms | 18,0 ms | 0 | entre 33,2 % y 33,5 % |
-| ip_hash | 230 | 31,1 ms | 120,3 ms | 175,9 ms | 0 | 100 % a backend3 |
+| round_robin | 784 | 14,8 ms | 48,9 ms | 127,8 ms | 0 | 33,3 % para cada backend |
+| least_conn | 876 | 12,5 ms | 46,1 ms | 117,9 ms | 0 | entre 33,0 % y 33,6 % |
+| ip_hash | 212 | 874,5 ms | 4965 ms | 5379 ms | 13 (0,02 %) | 42,6 / 24,4 / 33,0 %, con 2681 reintentos |
 
-**1000 usuarios concurrentes durante 60 s (`carga-1000.yml`, en `resultados/docker/saturacion-1000/`):**
+Con ip_hash todas las peticiones de Artillery salen de la misma IP, así que la carga cae en un solo backend. Ese backend se satura y NGINX reintenta en los otros, por eso la latencia sube tanto.
 
-| Algoritmo | Req/s | Media | p99 | Errores | Usuarios que terminaron |
-|---|---|---|---|---|---|
-| round_robin | 283 | 221,1 ms | 5168 ms | 43,2 % | 712 de 1000 |
-| least_conn | 295 | 342,4 ms | 5168 ms | 57,8 % | 993 de 1000 |
-| ip_hash | 88 | 826,2 ms | 5272 ms | 6,2 % | 437 de 1000 |
-
-Con 1000 usuarios el clúster se satura: 1000 compradores piden cerca de 1000 peticiones por segundo y en ese equipo solo alcanza unas 290. Las respuestas pasan de los 5 s de `proxy_read_timeout`, NGINX lo cuenta como fallo y, con `max_fails=3`, marca los backends como caídos. Como los tres se saturan a la vez, quedan marcados todos y NGINX responde 502 al instante (por eso la mediana es de 3 ms). Es un **fallo en cascada**; el análisis completo está en el informe. Una segunda corrida de 1000 usuarios dio 276 req/s y 56,8 % de errores.
-
-**Resiliencia (90 s a 50 peticiones/s, backend2 eliminado del segundo 30 al 60):** 4500 peticiones, **0 errores**, 27 reintentadas en otro backend.
+**Resiliencia (90 s a 50 peticiones/s, backend2 eliminado del segundo 30 al 60):** 4500 peticiones, **0 errores**, 49 reintentadas en otro backend.
 
 ```
 segundos   backend1  backend2  backend3  errores
-  20-30       169       168       168        0
-  30-40       246         8       249        0     ← se elimina backend2
-  40-50       251         0       254        0
-  50-60       253         0       251        0
-  60-70       235        39       234        0     ← backend2 vuelve
-  70-80       168       169       168        0
+  20-30       165       157       167        0
+  30-40       261         0       260        0     ← se elimina backend2
+  40-50       253         0       253        0
+  50-60       252         0       252        0
+  60-70       230        48       228        0     ← backend2 vuelve
+  70-80       168       168       169        0
 ```
 
 **Sesión (compradores que conservaron su carrito, de 20):**
@@ -397,12 +389,7 @@ segundos   backend1  backend2  backend3  errores
 | memoria del backend | 0/20 | 0/20 | 20/20 |
 | base de datos | 20/20 | 20/20 | 20/20 |
 
-Qué muestra cada algoritmo:
-
-- **round_robin:** reparto exacto en orden. Funciona bien porque las tres réplicas son iguales.
-- **least_conn:** reparto parecido, con un p99 un poco menor, porque evita mandar trabajo al backend que está ocupado.
-- **ip_hash:** todo el tráfico de Artillery va a un solo backend, porque todas las peticiones salen de la misma IP (la del contenedor de Artillery). Por eso su latencia es mayor. A cambio, es el único que conserva un carrito guardado en memoria.
-- **Resiliencia:** el servicio sigue respondiendo con un backend caído; las peticiones que iban a él se reintentan en otro.
+**Nota:** un primer intento de la prueba de 1000 usuarios en Docker Desktop (WSL2) se saturó en unas 290 req/s, con 43 a 58 % de errores 502 por un fallo en cascada. En la VM con 4 CPU el mismo proyecto atendió cerca de 1000 req/s sin errores.
 
 ## 10. Entorno de desarrollo con recarga en caliente
 
