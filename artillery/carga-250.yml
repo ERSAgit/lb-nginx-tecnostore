@@ -1,8 +1,8 @@
-# Prueba de 1000 usuarios concurrentes durante 60 segundos.
-# Los 1000 usuarios se crean en una rampa de 10 s. Cada uno entra a la
-# tienda, revisa 55 productos (1 s de pausa entre cada uno), agrega uno
-# al carrito y finaliza la compra. Así permanecen activos al mismo tiempo
-# durante unos 60 s, y la carga incluye lecturas y escrituras en MySQL.
+# Prueba de 250 usuarios concurrentes (primera ronda de pruebas).
+# Mismo recorrido que carga-1000.yml: cada usuario entra a la tienda,
+# revisa 55 productos (1 s de pausa entre cada uno), agrega uno al
+# carrito y finaliza la compra. Los resultados finales del proyecto
+# son los de carga-1000.yml.
 config:
   target: "http://nginx"
   phases:
